@@ -1,4 +1,3 @@
-import git
 import re
 import pandas as pd
 import argparse
@@ -76,39 +75,39 @@ def extract_diff_block(commit_list):
 def collect_snippet(args):
     df = pd.read_csv(args.csv_file, header=0)
     name_list = df['name']
-    with open(args.out_file, 'a') as f_out:
-        for i, name in enumerate(name_list, 1):
-            print(str(i) +'/' + str(len(name_list)))
-            path = 'repo/'+ name
-            # r = git.Repo(path)
-            git_log_command = ['git', 'log', '-p']
-            with open('tmp.txt', 'w', encoding='utf-8') as f_tmp:
-                f_tmp.truncate(0)
-                f_tmp.seek(0)
-                subprocess.run(git_log_command, cwd=path, stdout=f_tmp, shell=True)
-            with codecs.open('tmp.txt', 'r', encoding='utf-8', errors='ignore') as f_tmp:
-                commit_list = []
-                flag = False
-                while True:
-                    line = f_tmp.readline()
-                    if line == '':
+    
+    for i, name in enumerate(name_list, 1):
+        print(str(i) +'/' + str(len(name_list)))
+        path = 'repo/'+ name
+        git_log_command = ['git', 'log', '-p']
+        commit_list = []
+        flag = False
+        with codecs.open('tmp.txt', 'w+', encoding='utf-8', errors='ignore') as f_tmp, \
+            codecs.open(args.out_file, 'a', encoding='utf-8', errors='ignore') as f_out:
+            f_tmp.truncate(0)
+            f_tmp.seek(0)
+            subprocess.run(git_log_command, cwd=path, stdout=f_tmp, shell=True)
+            f_tmp.seek(0)
+            while True:
+                line = f_tmp.readline()
+                if line == '':
+                    commit_snippet = extract_diff_block(commit_list)
+                    if commit_snippet != '' and commit_snippet.isascii():
+                        print(commit_snippet, file=f_out)
+                    break
+                if line[0:6] == 'commit':
+                    if flag == False:
+                        flag = True
+                        commit_list.append(line)
+                    else:
                         commit_snippet = extract_diff_block(commit_list)
                         if commit_snippet != '' and commit_snippet.isascii():
-                            print(commit_snippet.encode('utf-8', 'ignore').decode('utf-8'), file=f_out)
-                        break
-                    if line[0:6] == 'commit':
-                        if flag == False:
-                            flag = True
-                            commit_list.append(line)
-                        else:
-                            commit_snippet = extract_diff_block(commit_list)
-                            if commit_snippet != '' and commit_snippet.isascii():
-                                print(commit_snippet.encode('utf-8', 'ignore').decode('utf-8'), file=f_out)
-                            commit_list = []
-                            commit_list.append(line)
-                    else:
+                            print(commit_snippet, file=f_out)
+                        commit_list = []
                         commit_list.append(line)
-            # break
+                else:
+                    commit_list.append(line)
+        # break
     
 
 if __name__ == '__main__':
